@@ -1,0 +1,33 @@
+dataset:
+  id:
+    name: Tumor
+    root: /mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest
+    split: val
+    loader: classification
+  ood:
+      - name: FAR_OOD
+        root: 
+        loader: classification
+
+      - name: NEAR_OOD
+        root: 
+        loader: classification
+
+network:
+  name: resnet50
+  model: openood/networks/resnet50.py
+  checkpoint: /mnt/homeGPU/jmartin/entorno_jose/resnet50.pth
+
+ood:
+  method: energy
+  temperature: 1.0
+
+evaluation:
+  batch_size: 64
+  device: cuda:0
+  metrics:
+    - AUROC
+    - FPR95
+    - FAR_OOD
+
+seed: 42
