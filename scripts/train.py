@@ -50,15 +50,15 @@ evaluator = get_evaluator(config)
 # -------------------------
 # Trainer
 # -------------------------
-trainer = get_trainer(net, train_loader, config)
+trainer = get_trainer(net, train_loader, val_loader, config)
 print('Entrenando')
-for epoch_idx in range(1, config.trainer.optimizer.num_epochs + 1):
+for epoch_idx in range(1, config.optimizer.num_epochs + 1):
     
     # Entrenar una época
     net, train_metrics = trainer.train_epoch(epoch_idx)
     
     # Evaluar en validación
-    val_metrics = evaluator.eval(net, val_loader, epoch_idx=epoch_idx)
+    val_metrics = evaluator.eval_acc(net, val_loader, epoch_idx=epoch_idx)
     
     # Guardar modelo y reportar métricas
     recorder.save_model(net, val_metrics)

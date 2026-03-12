@@ -7,9 +7,9 @@
 
 #SBATCH --gres=gpu:1                           # Numero de gpus a usar
 
+#SBATCH --exclude=atenea,titan,zeus
 #SBATCH --output=./train_resnet50.out
 
-        
 
 export PATH="/opt/anaconda/anaconda3/bin:$PATH"
 
@@ -22,6 +22,6 @@ conda activate /mnt/homeGPU/jmartin/entorno_jose/
 export TFHUB_CACHE_DIR=.
 
 
-python train.py --config train.yml        
+/mnt/homeGPU/jmartin/entorno_jose/bin/python /mnt/homeGPU/jmartin/TFG/scripts/train.py  --config /mnt/homeGPU/jmartin/TFG/configs/train.yml        
 
 

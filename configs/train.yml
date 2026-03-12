@@ -1,10 +1,10 @@
 
 num_gpus: 1
-num_workers: 4
+num_workers: 2
 num_machines: 1
 seed: 42
 
-output_dir: /mnt/homeGPU/jmartin/entorno_jose/results/tumor_resnet50
+output_dir: /mnt/homeGPU/jmartin/TFG/results
 
 dataset:
   name: Tumor
@@ -22,14 +22,14 @@ dataset:
   train:
     dataset_class: ImglistDataset
     data_dir: /mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest/train
-    imglist_pth: /mnt/homeGPU/jmartin/entorno_jose/train.txt
+    imglist_pth: /mnt/homeGPU/jmartin/TFG/data/train.txt
     batch_size: 64
     shuffle: True
 
   val:
     dataset_class: ImglistDataset
     data_dir: /mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest/val
-    imglist_pth: /mnt/homeGPU/jmartin/entorno_jose/val.txt
+    imglist_pth: /mnt/homeGPU/jmartin/TFG/data/val.txt
     batch_size: 64
     shuffle: False
 
@@ -39,23 +39,21 @@ network:
   name: resnet50
   num_classes: 14
   pretrained: True
-  checkpoint: /mnt/homeGPU/jmartin/entorno_jose/resnet50_imagenet_no_fc.ckpt
+  checkpoint: /mnt/homeGPU/jmartin/TFG/resnet50_imagenet_no_fc.ckpt
   num_gpus: 1
 preprocessor:
   name: base
 
 trainer:
-  name: train
-  optimizer:
-    name: adamw
-    lr: 0.001
-    weight_decay: 0.0005
-    num_epochs: 50
-  scheduler:
-    name: cosine_annealing
-    T_max: 50
+  name: base
   loss: cross_entropy
   batch_size: 64
+
+optimizer:
+  lr: 0.001
+  momentum: 0.9
+  weight_decay: 0.0005
+  num_epochs: 50
   
 evaluator:
   name: base
