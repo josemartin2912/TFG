@@ -1,2 +1,6 @@
 # checkpoints
 *.ckpt
+**/benchmark_imglist/  
+**/images_classic/ 
+**/images_medical/
+ 

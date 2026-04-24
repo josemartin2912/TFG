@@ -1,0 +1,61 @@
+
+seed: 42
+num_gpus: 1
+num_workers: 2
+num_machines: 1
+output_dir: /mnt/homeGPU/jmartin/TFG/results
+
+evaluator:
+  name: ood
+
+preprocessor:
+  name: base
+
+recorder:
+    name: base
+    save_all: True
+    save_csv: True
+    save_scores: False
+
+dataset:
+    name: Tumor
+    num_classes: 14       
+    image_size: 224 
+    pre_size: 256
+    interpolation: bilinear
+    normalization_type: imagenet
+    
+ood_dataset:
+  name: ood
+  num_classes: 14
+  dataset_class: ImglistDataset
+  batch_size: 64
+  shuffle: False
+  num_workers: 4
+  split_names: [nearood, farood]
+  
+  nearood:
+    datasets: [covid]
+    covid:
+      data_dir: /mnt/homeGPU/jmartin/TFG/data/images_medical
+      imglist_pth: /mnt/homeGPU/jmartin/TFG/data/benchmark_imglist/covid/test_bimcv.txt
+      
+  farood:
+    datasets: [cifar10]
+    cifar10:
+      data_dir: /mnt/homeGPU/jmartin/TFG/data/images_classic
+      imglist_pth: /mnt/homeGPU/jmartin/TFG/data/benchmark_imglist/cifar10/test_cifar10.txt
+
+postprocessor:
+  name: vim
+  postprocessor_args:
+        dim: 512
+  postprocessor_sweep:
+        dim: [128, 256, 512]
+
+network:
+  name: resnet50
+  num_classes: 14
+  pretrained: False
+  checkpoint: /mnt/homeGPU/jmartin/TFG/results/best_epoch37_acc0.9659.ckpt 
+  
