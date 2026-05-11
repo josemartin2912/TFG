@@ -1,3 +1,14 @@
+import torch
+import torch.nn as nn
+import numpy as np
+from tqdm import tqdm
+from typing import Any
+from numpy.linalg import pinv
+from zennit.composites import EpsilonPlusFlat
+from crp.attribution import CondAttribution
+from crp.concepts import ChannelConcept
+from openood.postprocessors.base_postprocessor import BasePostprocessor
+
 class XAIPostProcessor(BasePostprocessor): 
 
     def __init__(self, config):
@@ -18,116 +29,122 @@ class XAIPostProcessor(BasePostprocessor):
             # Activamos el modo evaluacion
             net.eval()
 
-            # Eliminamos el calculo de gradientes. Solo 
-            # necesitamos extraer features
-            with torch.no_grad():
-                print('Extracting id training feature')
+            print('Extracting id training feature')
 
-                # Vector de caracteristicas y xai id
-                feature_xai_id_train = []
+            # Vector de caracteristicas y xai id
+            feature_xai_id_train = []
 
-                # Elementos para el calculo del vector 
-                # de explicaciones con CRP. Operamos
-                # en la capa 4 de resnet50 que es la ultima 
-                # con convoluciones.
-                composite = EpsilonPlusFlat()
-                attribution = CondAttribution(net)
-                concept = ChannelConcept(net.layer4)
+            # Elementos para el calculo del vector 
+            # de explicaciones con CRP. Operamos
+            # en la capa 4 de resnet50 que es la ultima 
+            # con convoluciones.
+            self.composite = EpsilonPlusFlat()
+            self.attribution = CondAttribution(net)
+            self.concept = ChannelConcept()
 
-                for batch in tqdm(id_loader_dict['train'],
-                                   desc='Setup: ', 
-                                   position=0, 
-                                   leave=True): 
-                    
-                    # Pasamos los datos a GPU y float
-                    data = batch['data'].cuda() 
-                    data = data.float() 
+            for batch in tqdm(id_loader_dict['train'],
+                                desc='Setup: ', 
+                                position=0, 
+                                leave=True): 
+                
+                # Pasamos los datos a GPU y float
+                data = batch['data'].cuda() 
+                data = data.float() 
+                data.requires_grad_(True)
 
+                # Eliminamos el calculo de gradientes. Solo 
+                # necesitamos extraer features
+                with torch.no_grad():            
                     # Extraemos logits y features
                     logits, feature = net(data, return_feature=True)
-                    
+                
                     # Calculamos las predicciones de los logits, 
                     # necesario para el metodo CRP
                     pred = logits.argmax(dim=1)
 
-                    # Aplicamos CRP
-                    relevance = attribution(
-                        data,
-                        condition=pred,
-                        composite=composite,
-                        concept=concept
-                    )
-                    relevance = relevance.cpu()
+                data.detach().requires_grad_(True)
 
-                    feat_plus_xai = torch.cat([feature, relevance], dim=-1)
+                # condiciones: propagar relevancia respecto a la clase predicha
+                conditions = [{"y": [p.item()]} for p in pred]
 
-                    # Pasamos el tensor a numpy y CPU y guradamos en 
-                    # la lista de vectores de caracteristicas
-                    feature_xai_id_train.append(feat_plus_xai.cpu().numpy())
+                # Aplicamos CRP
+                attr = self.attribution(
+                    data,
+                    conditions=conditions,
+                    composite=self.composite,
+                    record_layer=["layer4"]
+                )
                 
-                # Concatenamos la lista de vectores de caracteristicas
-                # para que no esten agrupadas por batch_size y tener un
-                # vector de (N muestras, features.size() )
-                feature_xai_id_train = np.concatenate(feature_xai_id_train, axis=0)
 
-                
-                # Nuestro metodo esta basado en la distancia de mahalanobis.
-                # Esta distancia es d(x) = (x - μ)^T Σ^{-1} (x - μ) donde:
-                # - x es la muestra a calcular la distancia.
-                # - μ es la media de las muestras ID.
-                # - Σ es la covarianza entre las muestras ID.
-                # Para calcular luego los scores calculamos estos parámetros
-                self.mean = feature_xai_id_train.mean(axis=0)
-                self.cov = np.cov(feature_xai_id_train, rowvar=False)
+                relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
+                feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
-                # Para el calculo de la inversa de la covarianza, se introduce
-                # un término regulatorio eps en caso de ser singular
-                #  y se calcula su pseusoinversa, por estabilidad numerica
-                eps = 0.001
-                cov_reg = self.cov + eps * np.eye(cov.shape[0])
-                self.inv_cov = np.linalg.pinv(cov_reg)
+                # Guardamos el nuevo tensor
+                feature_xai_id_train.append(feat_plus_xai)
+            
+            # Concatenamos la lista de vectores de caracteristicas
+            # para que no esten agrupadas por batch_size y tener un
+            # vector de (N muestras, features.size() )
+            feature_xai_id_train = torch.cat(feature_xai_id_train, dim=0)
 
-                # Pasamos estos valores a torch
-                self.mean = torch.from_numpy(self.mean).float().cuda()
-                self.inv_cov = torch.from_numpy(self.inv_cov).float().cuda()
+            feat_xai_np = feature_xai_id_train.cpu().numpy()
+            # Nuestro metodo esta basado en la distancia de mahalanobis.
+            # Esta distancia es d(x) = (x - μ)^T Σ^{-1} (x - μ) donde:
+            # - x es la muestra a calcular la distancia.
+            # - μ es la media de las muestras ID.
+            # - Σ es la covarianza entre las muestras ID.
+            # Para calcular luego los scores calculamos estos parámetros
+            mean = feat_xai_np.mean(axis=0)
+            cov = np.cov(feat_xai_np, rowvar=False)
+
+            # Para el calculo de la inversa de la covarianza, se introduce
+            # un término regulatorio eps en caso de ser singular
+            #  y se calcula su pseusoinversa, por estabilidad numerica
+            eps = 0.001
+            cov_reg = cov + eps * np.eye(cov.shape[0])
+            inv_cov = pinv(cov_reg)
+
+            # Pasamos estos valores a torch
+            self.mean = torch.from_numpy(mean).float().cuda()
+            self.inv_cov = torch.from_numpy(inv_cov).float().cuda()
+
+            self.setup_flag = True
         else:    
             pass
     
     # Metodo de postprocess. A partir de data, extrae features y vectores XAI.
     # Despues los concatena y calcula la distancia de mahalanobis respecto
     # a la distribucion de features + XAI de ID. Devuelve predicciones y score
-    @torch.no_grad()
+
     def postprocess(self, net: nn.Module, data: Any):
 
 
         net.eval()
-        # Calculo de logits y features
-        logits, features = net.forward(data, return_feature=True)
-        features = features.cpu()
 
-        # Elementos para el calculo del vector 
-        # de explicaciones con CRP. Operamos
-        # en la capa 4 de resnet50 que es la ultima 
-        # con convoluciones.
-        composite = EpsilonPlusFlat()
-        attribution = CondAttribution(net)
-        concept = ChannelConcept(net.layer4)
-
-        
         # Pasamos los datos a GPU
-        data = data.cuda()
+        data = data.cuda().float()
 
-        # Calculamos la prediccion a partir de los logits.
-        pred = logits.argmax(dim=1)
+        with torch.no_grad():
+            # Calculo de logits y features
+            logits, features = net.forward(data, return_feature=True)
+            
+
+            # Calculamos la prediccion a partir de los logits.
+            pred = logits.argmax(dim=1)
+
+        data = data.detach().requires_grad_(True)
+        # condiciones: propagar relevancia respecto a la clase predicha
+        conditions = [{"y": [p.item()]} for p in pred]
 
         # Calculamos el vector de XAI
-        relevance = attribution(
+        attr = self.attribution(
             data,
-            condition=pred,
-            composite=composite,
-            concept=concept
+            conditions=conditions,
+            composite=self.composite,
+            record_layer=["layer4"]
         )
-        relevance = relevance.cpu()
+        
+        relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
 
         # Concatenamos features y XAI
         feat_plus_xai = torch.cat([features, relevance], dim=-1)
@@ -141,7 +158,7 @@ class XAIPostProcessor(BasePostprocessor):
         left = diff @ self.inv_cov          
         scores = (left * diff).sum(dim=1)
 
-        return pred, torch.from_numpy(scores)
+        return pred, -scores
 
         
 
