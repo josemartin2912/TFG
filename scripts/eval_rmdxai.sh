@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:1                           # Numero de gpus a usar
 
 #SBATCH --exclude=atenea,titan,zeus,hera
-#SBATCH --output=./eval_resnet50_xai.out
+#SBATCH --output=./eval_resnet50_xai_rmd.out
 
 
 
@@ -24,4 +24,4 @@ conda activate /mnt/homeGPU/jmartin/xai_env/
 export TFHUB_CACHE_DIR=.
 
 
-/mnt/homeGPU/jmartin/xai_env/bin/python /mnt/homeGPU/jmartin/TFG/scripts/eval_xai.py 
+/mnt/homeGPU/jmartin/xai_env/bin/python /mnt/homeGPU/jmartin/TFG/scripts/eval_rmdxai.py 

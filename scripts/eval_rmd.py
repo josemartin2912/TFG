@@ -16,7 +16,7 @@ cfg = config.Config('/mnt/homeGPU/jmartin/TFG/configs/train.yml',
                     '/mnt/homeGPU/jmartin/TFG/configs/eval_ood.yml')
 
 
-cfg.output_dir = "/mnt/homeGPU/jmartin/TFG/results/xai" 
+cfg.output_dir = "/mnt/homeGPU/jmartin/TFG/results/rmd" 
 
 
 # -------------------------
@@ -56,7 +56,7 @@ if cfg.network.checkpoint is not None:
 # -------------------------
 evaluator = get_evaluator(cfg)
 
-postprocessor = XAIPostProcessor(cfg)
+postprocessor = RMDPostProcessor(cfg)
 postprocessor.setup(net, id_data_loaders, ood_data_loaders)
 # -------------------------
 # Evaluación OOD

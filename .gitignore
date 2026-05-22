@@ -3,4 +3,4 @@
 **/benchmark_imglist/  
 **/images_classic/ 
 **/images_medical/
- 
+*.out 

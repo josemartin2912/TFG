@@ -10,13 +10,12 @@ from XAIPostprocessor import XAIPostProcessor
 from MahaPostProcessor import MahaPostProcessor
 from RMDXAIPostprocessor import RMDXAIPostProcessor
 from RMDPostprocessor import RMDPostProcessor
+from PIL import Image
 
+img = Image.open("/mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest/train/Estroma/30112463_004033_003809_000224.png")
 
 cfg = config.Config('/mnt/homeGPU/jmartin/TFG/configs/train.yml',
                     '/mnt/homeGPU/jmartin/TFG/configs/eval_ood.yml')
-
-
-cfg.output_dir = "/mnt/homeGPU/jmartin/TFG/results/xai" 
 
 
 # -------------------------
@@ -44,29 +43,17 @@ ood_data_loaders = get_ood_dataloader(cfg)
 # Network
 # -------------------------
 net = get_network(cfg.network)
-net = net.cuda()
+#net = net.cuda() #eliminar
 
 # Cargar checkpoint entrenado
 if cfg.network.checkpoint is not None:
     state = torch.load(cfg.network.checkpoint)
     net.load_state_dict(state, strict=False)
 
-# -------------------------
-# Evaluator
-# -------------------------
-evaluator = get_evaluator(cfg)
 
-postprocessor = XAIPostProcessor(cfg)
-postprocessor.setup(net, id_data_loaders, ood_data_loaders)
-# -------------------------
-# Evaluación OOD
-# -------------------------
-print("Evaluando OOD con XAI...")
-ood_metrics = evaluator.eval_ood(
-    net,
-    id_data_loaders=id_data_loaders,
-    ood_data_loaders=ood_data_loaders,
-    postprocessor=postprocessor
-)
 
-print(ood_metrics)
+postprocessor = XAIPostProcessor(cfg) # opcion evaluar mahalanobis en XAI + features
+#postprocessor = MahaPostProcessor(cfg) # opcion evaluar mahalanobis en features
+#postprocessor = RMDXAIPostProcessor(cfg) # opcion evaluar relative mahalanobis en features + XAI
+#postprocessor = RMDPostProcessor(cfg) # opcion evaluar relative mahalanobis en features
+postprocessor.setup(net, img, ood_data_loaders)
