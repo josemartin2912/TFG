@@ -96,10 +96,12 @@ attr = attribution(
     record_layer=["layer4"]
 )
 
-print(type(attr))
-print(len(attr))
-print(attr)
+#print(type(attr))
+#print(len(attr))
+#print(attr)
 relevance = concept.attribute(attr.relevances["layer4"], abs_norm=True) 
+print(relevance.max())
+print(relevance.min())
 print(f"Dimension tensor {feature.shape}")
 feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
