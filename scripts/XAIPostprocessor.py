@@ -170,6 +170,3 @@ class XAIPostProcessor(BasePostprocessor):
         scores = (left * diff).sum(dim=1)
 
         return pred, -scores
-
-        
-

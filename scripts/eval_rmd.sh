@@ -7,7 +7,7 @@
 
 #SBATCH --gres=gpu:1                           # Numero de gpus a usar
 
-#SBATCH --exclude=atenea,titan,zeus,hera
+
 #SBATCH --output=./eval_resnet50_rmd.out
 
 

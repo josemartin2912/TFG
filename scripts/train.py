@@ -7,6 +7,9 @@ from openood.preprocessors import get_preprocessor
 from openood.trainers import get_trainer
 from openood.evaluators import get_evaluator
 from openood.recorders import get_recorder
+import timm
+
+
 
 
 
@@ -41,9 +44,16 @@ val_loader   = dataloader_dict['val']
 # -------------------------
 # Network
 # -------------------------
-net = get_network(config.network)
+#net = get_network(config.network)
+net = timm.create_model(
+    'deit_base_patch16_224',
+    pretrained=True,
+    num_classes=config.num_classes
+)
 net = net.cuda()
 
+state = torch.load("/mnt/homeGPU/jmartin/TFG/results/best_epoch9_acc0.9537.ckpt")
+net.load_state_dict(state, strict=False)
 
 recorder = get_recorder(config)
 evaluator = get_evaluator(config)

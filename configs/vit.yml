@@ -1,0 +1,63 @@
+
+num_gpus: 1
+num_workers: 2
+num_machines: 1
+num_classes: 14
+seed: 42
+
+output_dir: /mnt/homeGPU/jmartin/TFG/results/DeiT
+
+dataset:
+  name: Tumor
+  root: /mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest
+  num_classes: 14       
+  image_size: 224 
+  pre_size: 256
+  interpolation: bilinear
+  normalization_type: imagenet
+  num_workers: 4
+  num_gpus: 1
+  num_machines: 1
+  split_names: [train, val]
+
+  train:
+    dataset_class: ImglistDataset
+    data_dir: /mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest/train
+    imglist_pth: /mnt/homeGPU/jmartin/TFG/data/train.txt
+    batch_size: 64
+    shuffle: True
+
+  val:
+    dataset_class: ImglistDataset
+    data_dir: /mnt/homeGPU/isevillano/Github/GleasonMap/Data/TrainTest/val
+    imglist_pth: /mnt/homeGPU/jmartin/TFG/data/val.txt
+    batch_size: 64
+    shuffle: False
+
+  
+
+network:
+  name: vit-b-16
+  num_classes: 14
+  pretrained: True
+  num_gpus: 1
+preprocessor:
+  name: base
+
+trainer:
+  name: base
+  loss: cross_entropy
+  batch_size: 64
+
+optimizer:
+  lr: 0.001
+  momentum: 0.9
+  weight_decay: 0.0005
+  num_epochs: 41
+  
+evaluator:
+  name: base
+
+recorder:
+  name: base
+  save_all: False

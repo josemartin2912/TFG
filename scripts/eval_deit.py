@@ -10,15 +10,16 @@ from XAIPostprocessor import XAIPostProcessor
 from MahaPostProcessor import MahaPostProcessor
 from RMDXAIPostprocessor import RMDXAIPostProcessor
 from RMDPostprocessor import RMDPostProcessor
-from BestXAIPostProcessor import BestXAIPostProcessor
+from BestXAIPostProcessor_trans import BestXAIPostProcessor_trans
+import timm
 
 
 
-cfg = config.Config('/mnt/homeGPU/jmartin/TFG/configs/train.yml',
+cfg = config.Config('/mnt/homeGPU/jmartin/TFG/configs/deit.yml',
                     '/mnt/homeGPU/jmartin/TFG/configs/eval_ood.yml')
 
 
-cfg.output_dir = "/mnt/homeGPU/jmartin/TFG/results/xai" 
+cfg.output_dir = "/mnt/homeGPU/jmartin/TFG/results/DeiT" 
 
 
 # -------------------------
@@ -45,13 +46,15 @@ ood_data_loaders = get_ood_dataloader(cfg)
 # -------------------------
 # Network
 # -------------------------
-net = get_network(cfg.network)
+net = timm.create_model(
+    'deit_base_patch16_224',
+    pretrained=True,
+    num_classes=cfg.num_classes
+)
 net = net.cuda()
 
-# Cargar checkpoint entrenado
-if cfg.network.checkpoint is not None:
-    state = torch.load(cfg.network.checkpoint)
-    net.load_state_dict(state, strict=False)
+state = torch.load("/mnt/homeGPU/jmartin/TFG/results/DeiT/best_epoch31_acc0.9670.ckpt")
+net.load_state_dict(state, strict=False)
 
 # -------------------------
 # Evaluator
@@ -59,7 +62,7 @@ if cfg.network.checkpoint is not None:
 evaluator = get_evaluator(cfg)
 
 #postprocessor = XAIPostProcessor(cfg)
-postprocessor = BestXAIPostProcessor(cfg)
+postprocessor = BestXAIPostProcessor_trans(cfg)
 postprocessor.setup(net, id_data_loaders, ood_data_loaders)
 # -------------------------
 # Evaluación OOD

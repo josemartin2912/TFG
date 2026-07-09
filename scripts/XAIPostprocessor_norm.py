@@ -9,7 +9,7 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
-class RMDXAIPostProcessor(BasePostprocessor): 
+class XAIPostProcessor_norm(BasePostprocessor): 
 
     def __init__(self, config):
         super().__init__(config)
@@ -19,7 +19,7 @@ class RMDXAIPostProcessor(BasePostprocessor):
     # Metodo que define el estado inicial del postprocessor. Para ello,
     # tomaremos las caracteristicas de nuestro id_loader, extraeremos
     # el vector de explicaciones con CRP y calcularemos la media y la
-    # covarianza de la distribucion ID, y la media de cada clase con el objetivo de 
+    # covarianza de la distribucion ID, con el objetivo de 
     # realizar los scores a partir de esta distribución.
     def setup(self, net: nn.Module, id_loader_dict, ood_loader_dict):
         
@@ -29,6 +29,10 @@ class RMDXAIPostProcessor(BasePostprocessor):
             # Activamos el modo evaluacion
             net.eval()
 
+            print('Extracting id training feature')
+
+            # Vector de caracteristicas y xai id
+            feature_xai_id_train = []
 
             # Elementos para el calculo del vector 
             # de explicaciones con CRP. Operamos
@@ -38,7 +42,8 @@ class RMDXAIPostProcessor(BasePostprocessor):
             self.attribution = CondAttribution(net)
             self.concept = ChannelConcept()
 
-            class_features_xai = [[] for _ in range(14)]           
+            all_features = []
+            all_xai = []
             for batch in tqdm(id_loader_dict['train'],
                                 desc='Setup: ', 
                                 position=0, 
@@ -46,9 +51,9 @@ class RMDXAIPostProcessor(BasePostprocessor):
                 
                 # Pasamos los datos a GPU y float
                 data = batch['data'].cuda() 
-                labels = batch['label'].cuda()
                 data = data.float() 
-                           
+                
+
                 with torch.no_grad():
                     # Extraemos logits y features
                     logits, feature = net(data, return_feature=True)
@@ -69,71 +74,57 @@ class RMDXAIPostProcessor(BasePostprocessor):
                     record_layer=["layer4"]
                 )
                 
+                all_features.append(feature.detach().cpu())
 
                 relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
                 relevance = relevance.detach()
-                feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
-                for i in range(feat_plus_xai.shape[0]):
-                    label = labels[i].item()
-                    class_features_xai[label].append(feat_plus_xai[i].detach().cpu())
+                all_xai.append(relevance.detach().cpu())
 
-                print(f"Dimension tensor {feat_plus_xai.shape}")
 
-                del data
                 del logits
                 del feature
-                del relevance 
-                del feat_plus_xai 
+                del relevance
                 del attr
                 torch.cuda.empty_cache()
-                # Guardamos el nuevo tensor
-
-                #feature_xai_id_train.append(feat_plus_xai)
             
+            features = torch.cat(all_features, dim=0)
+            self.max_vals_feat = features.abs().max(dim=0, keepdim=True).values
+            features_norm = features / (self.max_vals_feat + 1e-8)
+
+            xai = torch.cat(all_xai, dim=0)
+            self.max_vals_xai = xai.abs().max(dim=0, keepdim=True).values
+            xai_norm = xai / (self.max_vals_xai + 1e-8)
+
+
+
             # Concatenamos la lista de vectores de caracteristicas
             # para que no esten agrupadas por batch_size y tener un
             # vector de (N muestras, features.size() )
+            feature_xai_id_train = torch.cat([features_norm, xai_norm], dim=1)
 
-            #feature_xai_id_train = torch.cat(feature_xai_id_train, dim=0)
-
-            #feat_xai_np = feature_xai_id_train.cpu().numpy()
-            class_features_xai = [
-                torch.stack(c, dim=0) for c in class_features_xai
-            ]
-
-            all_features_xai = torch.cat(class_features_xai, dim=0)
+            feat_xai_np = feature_xai_id_train.numpy()
             # Nuestro metodo esta basado en la distancia de mahalanobis.
             # Esta distancia es d(x) = (x - μ)^T Σ^{-1} (x - μ) donde:
             # - x es la muestra a calcular la distancia.
             # - μ es la media de las muestras ID.
             # - Σ es la covarianza entre las muestras ID.
             # Para calcular luego los scores calculamos estos parámetros
-    
+            mean = feat_xai_np.mean(axis=0)
+            cov = np.cov(feat_xai_np, rowvar=False)
 
-            mean_per_class = torch.stack(
-                [c.mean(dim=0) for c in class_features_xai],
-                dim=0
-            )
-            mean = all_features_xai.mean(dim=0)
-
-             # Para el calculo de la inversa de la covarianza, se introduce
+            # Para el calculo de la inversa de la covarianza, se introduce
             # un término regulatorio eps en caso de ser singular
             #  y se calcula su pseusoinversa, por estabilidad numerica
-            
-            dif = all_features_xai - mean
-
-            cov = ( dif.T @ dif ) / (dif.size(0) - 1) 
             eps = 0.001
-            cov_reg = cov + eps + torch.eye(cov.size(0))
-            inv_cov = torch.linalg.pinv(cov_reg)
+            cov_reg = cov + eps * np.eye(cov.shape[0])
+            inv_cov = pinv(cov_reg)
 
-            
-
-            # Pasamos estos valores a cuda
-            self.mean_per_class = mean_per_class.cuda()
-            self.mean = mean.cuda()
-            self.inv_cov = inv_cov.cuda()
+            # Pasamos estos valores a torch
+            self.max_vals_feat = self.max_vals_feat.cuda()
+            self.max_vals_xai = self.max_vals_xai.cuda()
+            self.mean = torch.from_numpy(mean).float().cuda()
+            self.inv_cov = torch.from_numpy(inv_cov).float().cuda()
 
             self.setup_flag = True
         else:    
@@ -150,11 +141,11 @@ class RMDXAIPostProcessor(BasePostprocessor):
 
         # Pasamos los datos a GPU
         data = data.cuda().float()
-
+       
         with torch.no_grad():
             # Calculo de logits y features
             logits, features = net(data, return_feature=True)
-            
+        
 
             # Calculamos la prediccion a partir de los logits.
             pred = logits.argmax(dim=1)
@@ -171,9 +162,11 @@ class RMDXAIPostProcessor(BasePostprocessor):
             record_layer=["layer4"]
         )
         
+        features = features / (self.max_vals_feat + 1e-8)
         relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
-        relevance = relevance.detach()
+        relevance.detach()
 
+        relevance = relevance / (self.max_vals_xai + 1e-8)
         # Concatenamos features y XAI
         feat_plus_xai = torch.cat([features, relevance], dim=-1)
         print(f"Dimension tensor {feat_plus_xai.shape}")
@@ -185,20 +178,9 @@ class RMDXAIPostProcessor(BasePostprocessor):
         # scores = (x - μ)^T Σ^{-1} (x - μ)
         diff = feat_plus_xai - self.mean                  
         left = diff @ self.inv_cov          
-        md = (left * diff).sum(dim=1)
-
-        rmds = []
-        for i in range(14):
-            diff = feat_plus_xai - self.mean_per_class[i]                  
-            left = diff @ self.inv_cov          
-            md_per_class = ((left * diff).sum(dim=1))
-
-            rmd = md_per_class - md
-
-            rmds.append(rmd.unsqueeze(1))
-
-        rmds = torch.cat(rmds, dim=1)
-
-        scores = rmds.min(dim=1).values
+        scores = (left * diff).sum(dim=1)
 
         return pred, -scores
+
+        
+
