@@ -155,7 +155,7 @@ class BestXAIPostProcessor(BasePostprocessor):
 
         relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
         relevance.detach()
-        best_xai = int(0.25 * features.shape[1])
+        best_xai = int(1 * features.shape[1])
         top_idx = torch.topk(relevance.abs(), k=best_xai, dim=1).indices
         # Concatenamos features y XAI
         mask = torch.zeros_like(features, dtype=torch.bool)

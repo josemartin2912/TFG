@@ -102,6 +102,8 @@ attr = attribution(
 relevance = concept.attribute(attr.relevances["layer4"], abs_norm=True) 
 print(relevance.max())
 print(relevance.min())
+print(feature.max())
+print(feature.min())
 print(f"Dimension tensor {feature.shape}")
 feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
