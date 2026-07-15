@@ -9,7 +9,9 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
-# Postprocessor que selecciona un porcetnaje de mej
+# Postprocessor que selecciona un porcentaje de mejores caracteristicas.
+# Esta pensado para observar como afecta a la deteccion OOD el ahorro de
+# features. Este es el postprocessor para transformers
 class BestXAIPostProcessor_trans(BasePostprocessor): 
 
     def __init__(self, config):
@@ -18,8 +20,7 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
 
 
     # Metodo que define el estado inicial del postprocessor. Para ello,
-    # tomaremos las caracteristicas de nuestro id_loader, extraeremos
-    # el vector de explicaciones con CRP y calcularemos la media y la
+    # tomaremos las caracteristicas de nuestro id_loader, y calcularemos la media y la
     # covarianza de la distribucion ID, con el objetivo de 
     # realizar los scores a partir de esta distribución.
     def setup(self, net: nn.Module, id_loader_dict, ood_loader_dict):
@@ -96,8 +97,12 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
             pass
     
     # Metodo de postprocess. A partir de data, extrae features y vectores XAI.
-    # Despues los concatena y calcula la distancia de mahalanobis respecto
-    # a la distribucion de features + XAI de ID. Devuelve predicciones y score
+    # Despues para cada ejemplo extrae un porcentaje (esta mas abajo en el codigo
+    # puesto a 25% por defecto) de los valores mas altos en valor absoluto del vector
+    # CRP. Obtenemos los indices de estos p% valores mas altos y en las features
+    # asignamos 0 a cada posicion que no sea uno de los indices anteriores. 
+    # Por ultimo, se calcula la distancia de mahalanobis respecto
+    # a la distribucion de features de ID. Devuelve predicciones y score
 
     def postprocess(self, net: nn.Module, data: Any):
 
@@ -121,7 +126,8 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
         conditions = [{"y": [p.item()]} for p in pred]
 
         # Calculamos el vector de XAI
-        # Aplicamos CRP
+        # Aplicamos CRP sobre el ultimo bloque
+        # de transformer, que es el 11
         attr = self.attribution(
             data,
             conditions=conditions,
@@ -137,9 +143,12 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
         rel_cls = rel_cls.detach()
 
         # Obtenemos el 25% de mejores features en base a CRP
-        best_xai = int(1 * features.shape[1])
+        best_xai = int(0.25 * features.shape[1])
         top_idx = torch.topk(rel_cls.abs(), k=best_xai, dim=1).indices
-        # Concatenamos features y XAI
+
+        # Para cada ejemplo, construimos una mascara de modo que
+        # features_masked[i] = features[i] si i esta en top_idx
+        # y 0 en caso contrario
         mask = torch.zeros_like(features, dtype=torch.bool)
 
         mask.scatter_(1, top_idx, True)
