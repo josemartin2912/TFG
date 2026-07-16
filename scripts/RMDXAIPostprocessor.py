@@ -9,12 +9,17 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+#----------------------------------------------------------------------
+# Postprocessor que calcula la distribucion de features y vectores de XAI 
+# CRP ID y calcula la relative mahalanobis distance a esta distribucion
+# para devolver scores.
+#----------------------------------------------------------------------
 class RMDXAIPostProcessor(BasePostprocessor): 
 
     def __init__(self, config):
         super().__init__(config)
         self.setup_flag = False
-
+        self.num_classes = self.config.num_classes
 
     # Metodo que define el estado inicial del postprocessor. Para ello,
     # tomaremos las caracteristicas de nuestro id_loader, extraeremos
@@ -38,7 +43,9 @@ class RMDXAIPostProcessor(BasePostprocessor):
             self.attribution = CondAttribution(net)
             self.concept = ChannelConcept()
 
-            class_features_xai = [[] for _ in range(14)]           
+            # Lista de listas de features por clase
+
+            class_features_xai = [[] for _ in range(self.num_classes)]           
             for batch in tqdm(id_loader_dict['train'],
                                 desc='Setup: ', 
                                 position=0, 
@@ -72,13 +79,14 @@ class RMDXAIPostProcessor(BasePostprocessor):
 
                 relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
                 relevance = relevance.detach()
+
+                # Calculamos el vector concatenado de feature y CRP
                 feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
+                # Introducimos cada vector en la lista de su clase
                 for i in range(feat_plus_xai.shape[0]):
                     label = labels[i].item()
                     class_features_xai[label].append(feat_plus_xai[i].detach().cpu())
-
-                print(f"Dimension tensor {feat_plus_xai.shape}")
 
                 del data
                 del logits
@@ -87,22 +95,16 @@ class RMDXAIPostProcessor(BasePostprocessor):
                 del feat_plus_xai 
                 del attr
                 torch.cuda.empty_cache()
-                # Guardamos el nuevo tensor
 
-                #feature_xai_id_train.append(feat_plus_xai)
-            
-            # Concatenamos la lista de vectores de caracteristicas
-            # para que no esten agrupadas por batch_size y tener un
-            # vector de (N muestras, features.size() )
-
-            #feature_xai_id_train = torch.cat(feature_xai_id_train, dim=0)
-
-            #feat_xai_np = feature_xai_id_train.cpu().numpy()
+            # La lista de cada clase se organiza en forma de batches y no ejemplos.
+            # Con esto, hacemos un stack de todos los batches y pasamos a ejemplos.        
             class_features_xai = [
                 torch.stack(c, dim=0) for c in class_features_xai
             ]
 
+            # Extraemos todos los vectores
             all_features_xai = torch.cat(class_features_xai, dim=0)
+            
             # Nuestro metodo esta basado en la distancia de mahalanobis.
             # Esta distancia es d(x) = (x - μ)^T Σ^{-1} (x - μ) donde:
             # - x es la muestra a calcular la distancia.
@@ -111,6 +113,7 @@ class RMDXAIPostProcessor(BasePostprocessor):
             # Para calcular luego los scores calculamos estos parámetros
     
 
+            # Calculamos la media de cada clase y media global
             mean_per_class = torch.stack(
                 [c.mean(dim=0) for c in class_features_xai],
                 dim=0
@@ -140,7 +143,7 @@ class RMDXAIPostProcessor(BasePostprocessor):
             pass
     
     # Metodo de postprocess. A partir de data, extrae features y vectores XAI.
-    # Despues los concatena y calcula la distancia de mahalanobis respecto
+    # Despues los concatena y calcula la distancia relativa de mahalanobis respecto
     # a la distribucion de features + XAI de ID. Devuelve predicciones y score
 
     def postprocess(self, net: nn.Module, data: Any):
@@ -176,7 +179,6 @@ class RMDXAIPostProcessor(BasePostprocessor):
 
         # Concatenamos features y XAI
         feat_plus_xai = torch.cat([features, relevance], dim=-1)
-        print(f"Dimension tensor {feat_plus_xai.shape}")
 
         # Calculamos distancia de mahalanobis. Esta distancia es:
         # d(x) = (x - μ)^T Σ^{-1} (x - μ).
@@ -187,18 +189,23 @@ class RMDXAIPostProcessor(BasePostprocessor):
         left = diff @ self.inv_cov          
         md = (left * diff).sum(dim=1)
 
+        # Calculamos la relative mahalanobis distance
         rmds = []
-        for i in range(14):
+        for i in range(self.num_classes):
+
+            # Distancia de mahalanobis de la muestra a cada clase
             diff = feat_plus_xai - self.mean_per_class[i]                  
             left = diff @ self.inv_cov          
             md_per_class = ((left * diff).sum(dim=1))
 
+            # Calculamos la RMD que es la MD a cada clase - MD global
             rmd = md_per_class - md
 
             rmds.append(rmd.unsqueeze(1))
 
         rmds = torch.cat(rmds, dim=1)
 
+        # Nos quedamos con la menor
         scores = rmds.min(dim=1).values
 
         return pred, -scores

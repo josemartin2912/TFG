@@ -9,6 +9,17 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+#----------------------------------------------------------------------
+# Postprocessor que calcula la distribucion de features y vectores XAI CRP para ID y 
+# calcula la mahalanobis distance a esta distribucion
+# para devolver scores. Esta es la version normalizada
+# La normalizacion es la siguiente: Supongamos una
+# matriz tal que cada fila es un vector de features concat XAI.
+# Por tanto, las columnas son cada variable de features o XAI.
+# La normalizacion se basa en dividir cada columna por el
+# maximo en valor absoluto de la columna. 
+#----------------------------------------------------------------------
+
 class XAIPostProcessor_norm(BasePostprocessor): 
 
     def __init__(self, config):
@@ -20,7 +31,9 @@ class XAIPostProcessor_norm(BasePostprocessor):
     # tomaremos las caracteristicas de nuestro id_loader, extraeremos
     # el vector de explicaciones con CRP y calcularemos la media y la
     # covarianza de la distribucion ID, con el objetivo de 
-    # realizar los scores a partir de esta distribución.
+    # realizar los scores a partir de esta distribución. Ademas,
+    # calcularemos los valores maximos de cada variable para plantear
+    # la normalizacion descrita al principio del script.
     def setup(self, net: nn.Module, id_loader_dict, ood_loader_dict):
         
         # Si no se ha hecho setup del postprocessor
@@ -29,7 +42,6 @@ class XAIPostProcessor_norm(BasePostprocessor):
             # Activamos el modo evaluacion
             net.eval()
 
-            print('Extracting id training feature')
 
             # Vector de caracteristicas y xai id
             feature_xai_id_train = []
@@ -74,11 +86,13 @@ class XAIPostProcessor_norm(BasePostprocessor):
                     record_layer=["layer4"]
                 )
                 
+                # Agrupamos por features
                 all_features.append(feature.detach().cpu())
 
                 relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
                 relevance = relevance.detach()
 
+                # Agrupamos los vectores CRP
                 all_xai.append(relevance.detach().cpu())
 
 
@@ -87,11 +101,13 @@ class XAIPostProcessor_norm(BasePostprocessor):
                 del relevance
                 del attr
                 torch.cuda.empty_cache()
-            
+
+            # Calculamos el maximo del valor absoluto de cada feature
             features = torch.cat(all_features, dim=0)
             self.max_vals_feat = features.abs().max(dim=0, keepdim=True).values
             features_norm = features / (self.max_vals_feat + 1e-8)
 
+            # Calculamos el maximo del valor absoluto de cada vector CRP
             xai = torch.cat(all_xai, dim=0)
             self.max_vals_xai = xai.abs().max(dim=0, keepdim=True).values
             xai_norm = xai / (self.max_vals_xai + 1e-8)
@@ -131,6 +147,7 @@ class XAIPostProcessor_norm(BasePostprocessor):
             pass
     
     # Metodo de postprocess. A partir de data, extrae features y vectores XAI.
+    # Se normalizan estos vectores de acuerdo a lo planteado al inicio del script.
     # Despues los concatena y calcula la distancia de mahalanobis respecto
     # a la distribucion de features + XAI de ID. Devuelve predicciones y score
 
@@ -162,14 +179,15 @@ class XAIPostProcessor_norm(BasePostprocessor):
             record_layer=["layer4"]
         )
         
+        # Normalizamos features y CRP
         features = features / (self.max_vals_feat + 1e-8)
         relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
         relevance.detach()
 
         relevance = relevance / (self.max_vals_xai + 1e-8)
+
         # Concatenamos features y XAI
         feat_plus_xai = torch.cat([features, relevance], dim=-1)
-        print(f"Dimension tensor {feat_plus_xai.shape}")
 
         # Calculamos distancia de mahalanobis. Esta distancia es:
         # d(x) = (x - μ)^T Σ^{-1} (x - μ).

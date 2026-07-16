@@ -24,4 +24,4 @@ conda activate /mnt/homeGPU/jmartin/xai_env/
 export TFHUB_CACHE_DIR=.
 
 
-/mnt/homeGPU/jmartin/xai_env/bin/python /mnt/homeGPU/jmartin/TFG/scripts/eval_xai.py 
+/mnt/homeGPU/jmartin/xai_env/bin/python /mnt/homeGPU/jmartin/TFG/scripts/eval_ood.py 

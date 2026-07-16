@@ -10,8 +10,9 @@ from openood.recorders import get_recorder
 import timm
 
 
-
-
+#----------------------------------------------------------------------
+# Script de entrenamiento
+#----------------------------------------------------------------------
 
 
 # -------------------------
@@ -44,7 +45,11 @@ val_loader   = dataloader_dict['val']
 # -------------------------
 # Network
 # -------------------------
+
+# Modelo del fichero de config. En este caso resnet50
 #net = get_network(config.network)
+
+# Modelo DeiT de timm
 net = timm.create_model(
     'deit_base_patch16_224',
     pretrained=True,
@@ -52,8 +57,7 @@ net = timm.create_model(
 )
 net = net.cuda()
 
-state = torch.load("/mnt/homeGPU/jmartin/TFG/results/best_epoch9_acc0.9537.ckpt")
-net.load_state_dict(state, strict=False)
+
 
 recorder = get_recorder(config)
 evaluator = get_evaluator(config)

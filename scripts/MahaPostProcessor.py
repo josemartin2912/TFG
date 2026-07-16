@@ -6,6 +6,12 @@ from typing import Any
 from numpy.linalg import pinv
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+# -----------------------------------------------------------
+# Postprocessor que calcula la distribucion de features ID y
+# calcula los scores como la distancia de mahalanobis 
+# a esta distribucion
+# -----------------------------------------------------------
+
 class MahaPostProcessor(BasePostprocessor): 
 
     def __init__(self, config):
@@ -25,8 +31,6 @@ class MahaPostProcessor(BasePostprocessor):
             # Activamos el modo evaluacion
             net.eval()
 
-            print('Extracting id training feature')
-
             # Vector de caracteristicas y xai id
             feature_id_train = []
 
@@ -42,17 +46,19 @@ class MahaPostProcessor(BasePostprocessor):
                 data = data.float() 
                 # Eliminamos el calculo de gradientes. Solo 
                 # necesitamos extraer features
-                with torch.no_grad():            
+
+                with torch.no_grad():        
+
                     # Extraemos logits y features
                     _, feature = net(data, return_feature=True)
 
-                print(f"Dimension tensor {feature.shape}")
 
                 # Guardamos el nuevo tensor
                 feature_id_train.append(feature.detach().cpu())
         
                 del feature
-                torch.cuda.empty_cache()            
+                torch.cuda.empty_cache()   
+
             # Concatenamos la lista de vectores de caracteristicas
             # para que no esten agrupadas por batch_size y tener un
             # vector de (N muestras, features.size() )
@@ -98,7 +104,6 @@ class MahaPostProcessor(BasePostprocessor):
         # Calculo de logits y features
         logits, features = net(data, return_feature=True)
         
-        print(f"Dimension tensor {features.shape}")
         # Calculamos la prediccion a partir de los logits.
         pred = logits.argmax(dim=1)
        

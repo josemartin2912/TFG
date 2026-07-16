@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 
+# Script que se encarga de generar graficas de comparacion
+# de funcion de perdida en train y validacion y accuracy en validacion
+# a partir de un csv de metricas.
 
 df = pd.read_csv('/mnt/homeGPU/jmartin/TFG/results/DeiT/metricas.csv')
 

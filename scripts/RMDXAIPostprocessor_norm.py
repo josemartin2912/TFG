@@ -9,6 +9,19 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+#----------------------------------------------------------------------
+# Version Normalizada de RMDXAIPostProcessor. Los comentarios
+# de este script pueden no ser acordes al codigo, ya que no se han
+# modificado respecto otras versiones consultar (RMDXAIPostProcessor.py). 
+# El unico cambio con el postprocessor anterior 
+# es la normalizacion de los vectores.
+# Tenemos los vectores features concat XAI. Supongamos una
+# matriz tal que cada fila es un vector de features concat XAI.
+# Por tanto, las columnas son cada variable de features o XAI.
+# La normalizacion se basa en dividir cada columna por el
+# maximo en valor absoluto de la columna. 
+#----------------------------------------------------------------------
+
 class RMDXAIPostProcessor_norm(BasePostprocessor): 
 
     def __init__(self, config):

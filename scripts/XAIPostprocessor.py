@@ -9,6 +9,12 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+#----------------------------------------------------------------------
+# Postprocessor que calcula la distribucion de features y vectores XAI CRP para ID y 
+# calcula la mahalanobis distance a esta distribucion
+# para devolver scores. 
+#----------------------------------------------------------------------
+
 class XAIPostProcessor(BasePostprocessor): 
 
     def __init__(self, config):
@@ -75,9 +81,9 @@ class XAIPostProcessor(BasePostprocessor):
 
                 relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
                 relevance = relevance.detach()
-                feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
-                print(f"Dimension tensor {feat_plus_xai.shape}")
+                # Concatenamos features y XAI
+                feat_plus_xai = torch.cat([feature, relevance], dim=-1)
 
                 # Guardamos el nuevo tensor
                 feature_xai_id_train.append(
@@ -156,9 +162,10 @@ class XAIPostProcessor(BasePostprocessor):
 
         relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
         relevance.detach()
+        
         # Concatenamos features y XAI
         feat_plus_xai = torch.cat([features, relevance], dim=-1)
-        print(f"Dimension tensor {feat_plus_xai.shape}")
+ 
 
         # Calculamos distancia de mahalanobis. Esta distancia es:
         # d(x) = (x - μ)^T Σ^{-1} (x - μ).

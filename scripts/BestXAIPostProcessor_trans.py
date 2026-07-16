@@ -9,14 +9,21 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+#----------------------------------------------------------------------
 # Postprocessor que selecciona un porcentaje de mejores caracteristicas.
 # Esta pensado para observar como afecta a la deteccion OOD el ahorro de
-# features. Este es el postprocessor para transformers
+# features. Este es el postprocessor para transformers.
+#----------------------------------------------------------------------
+
 class BestXAIPostProcessor_trans(BasePostprocessor): 
 
+    # Constructor. Asignamos el porcentaje de mejores caracteristicas a seleccionar.
+    # Por defecto es 25%.
     def __init__(self, config):
         super().__init__(config)
         self.setup_flag = False
+        self.args = self.config.postprocessor.postprocessor_args
+        self.best_pct = (self.args.best_pct / 100.0) if self.args.best_pct is not None else 0.25
 
 
     # Metodo que define el estado inicial del postprocessor. Para ello,
@@ -102,7 +109,7 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
     # CRP. Obtenemos los indices de estos p% valores mas altos y en las features
     # asignamos 0 a cada posicion que no sea uno de los indices anteriores. 
     # Por ultimo, se calcula la distancia de mahalanobis respecto
-    # a la distribucion de features de ID. Devuelve predicciones y score
+    # a la distribucion de features de ID. Devuelve predicciones y score.
 
     def postprocess(self, net: nn.Module, data: Any):
 
@@ -122,7 +129,8 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
             pred = logits.argmax(dim=1)
 
         data = data.detach().requires_grad_(True)
-        # condiciones: propagar relevancia respecto a la clase predicha
+
+        # Se propaga la relevancia respecto a la clase predicha
         conditions = [{"y": [p.item()]} for p in pred]
 
         # Calculamos el vector de XAI
@@ -142,8 +150,8 @@ class BestXAIPostProcessor_trans(BasePostprocessor):
         relevance = relevance.detach()
         rel_cls = rel_cls.detach()
 
-        # Obtenemos el 25% de mejores features en base a CRP
-        best_xai = int(0.25 * features.shape[1])
+        # Obtenemos el porcentaje de mejores features en base a CRP
+        best_xai = int(self.best_pct * features.shape[1])
         top_idx = torch.topk(rel_cls.abs(), k=best_xai, dim=1).indices
 
         # Para cada ejemplo, construimos una mascara de modo que

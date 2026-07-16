@@ -1,7 +1,14 @@
 import matplotlib.pyplot as plt
 
+# -----------------------------------------------------------
+# Script que calcula graficas de las 4 metricas OOD 
+# para diferentes valores de p% de BestXAIPostProcessor
+# -----------------------------------------------------------
+
+# Nombres de metricas
 metric_names = ["FPR@95", "AUROC", "AUPR_IN", "AUPR_OUT"]
 
+# Resultados para cada valor de p%
 results = {
     "25%": [5.05, 98.02, 99.82, 70.43],
     "50%": [6.39, 96.66, 99.77, 48.44],
@@ -9,6 +16,7 @@ results = {
     "100%": [0.0, 100.0, 100.0, 100.0],
 }
 
+# Plot y guardar imagen en resultados
 plt.figure(figsize=(9, 5))
 
 for label, values in results.items():

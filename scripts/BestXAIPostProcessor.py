@@ -9,16 +9,27 @@ from crp.attribution import CondAttribution
 from crp.concepts import ChannelConcept
 from openood.postprocessors.base_postprocessor import BasePostprocessor
 
+#----------------------------------------------------------------------
+# Postprocessor que selecciona un porcentaje de mejores caracteristicas.
+# Esta pensado para observar como afecta a la deteccion OOD el ahorro de
+# features. Este es el postprocessor para CNNs.
+#----------------------------------------------------------------------
+
+
 class BestXAIPostProcessor(BasePostprocessor): 
 
+    # Constructor. Asignamos el porcentaje de mejores caracteristicas a seleccionar.
+    # Por defecto es 25%.
     def __init__(self, config):
         super().__init__(config)
         self.setup_flag = False
+        self.args = self.config.postprocessor.postprocessor_args
+        self.best_pct = (self.args.best_pct / 100.0) if self.args.best_pct is not None else 0.25
 
 
     # Metodo que define el estado inicial del postprocessor. Para ello,
-    # tomaremos las caracteristicas de nuestro id_loader, extraeremos
-    # el vector de explicaciones con CRP y calcularemos la media y la
+    # tomaremos las caracteristicas de nuestro id_loader 
+    # y calcularemos la media y la
     # covarianza de la distribucion ID, con el objetivo de 
     # realizar los scores a partir de esta distribución.
     def setup(self, net: nn.Module, id_loader_dict, ood_loader_dict):
@@ -30,13 +41,11 @@ class BestXAIPostProcessor(BasePostprocessor):
             net.eval()
 
 
-            # Vector de caracteristicas y xai id
-            feature_xai_id_train = []
+            # Vector de features id
+            feature_id_train = []
 
             # Elementos para el calculo del vector 
-            # de explicaciones con CRP. Operamos
-            # en la capa 4 de resnet50 que es la ultima 
-            # con convoluciones.
+            # de explicaciones con CRP. 
             self.composite = EpsilonPlusFlat()
             self.attribution = CondAttribution(net)
             self.concept = ChannelConcept()
@@ -55,55 +64,32 @@ class BestXAIPostProcessor(BasePostprocessor):
                     # Extraemos logits y features
                     logits, feature = net(data, return_feature=True)
                 
-                    # Calculamos las predicciones de los logits, 
-                    # necesario para el metodo CRP
-                    pred = logits.argmax(dim=1)
 
                 data = data.detach().requires_grad_(True)
-                # condiciones: propagar relevancia respecto a la clase predicha
-                conditions = [{"y": [p.item()]} for p in pred]
-
-                # Aplicamos CRP
-                attr = self.attribution(
-                    data,
-                    conditions=conditions,
-                    composite=self.composite,
-                    record_layer=["layer4"]
-                )
-                
-
-                relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
-                relevance = relevance.detach()
-                feat_plus_xai = torch.cat([feature, relevance], dim=-1)
-
-                print(f"Dimension tensor {feat_plus_xai.shape}")
 
                 # Guardamos el nuevo tensor
-                feature_xai_id_train.append(
+                feature_id_train.append(
                     feature.detach().cpu()
                 )
 
                 del logits
                 del feature
-                del relevance
-                del feat_plus_xai
-                del attr
                 torch.cuda.empty_cache()
             
-            # Concatenamos la lista de vectores de caracteristicas
+            # Concatenamos la lista de vectores de features
             # para que no esten agrupadas por batch_size y tener un
             # vector de (N muestras, features.size() )
-            feature_xai_id_train = torch.cat(feature_xai_id_train, dim=0)
+            feature_id_train = torch.cat(feature_id_train, dim=0)
 
-            feat_xai_np = feature_xai_id_train.numpy()
+            feat_np = feature_id_train.numpy()
             # Nuestro metodo esta basado en la distancia de mahalanobis.
             # Esta distancia es d(x) = (x - μ)^T Σ^{-1} (x - μ) donde:
             # - x es la muestra a calcular la distancia.
             # - μ es la media de las muestras ID.
             # - Σ es la covarianza entre las muestras ID.
             # Para calcular luego los scores calculamos estos parámetros
-            mean = feat_xai_np.mean(axis=0)
-            cov = np.cov(feat_xai_np, rowvar=False)
+            mean = feat_np.mean(axis=0)
+            cov = np.cov(feat_np, rowvar=False)
 
             # Para el calculo de la inversa de la covarianza, se introduce
             # un término regulatorio eps en caso de ser singular
@@ -112,7 +98,7 @@ class BestXAIPostProcessor(BasePostprocessor):
             cov_reg = cov + eps * np.eye(cov.shape[0])
             inv_cov = pinv(cov_reg)
 
-            # Pasamos estos valores a torch
+            # Pasamos estos valores a tensores pytorch
             self.mean = torch.from_numpy(mean).float().cuda()
             self.inv_cov = torch.from_numpy(inv_cov).float().cuda()
 
@@ -121,9 +107,12 @@ class BestXAIPostProcessor(BasePostprocessor):
             pass
     
     # Metodo de postprocess. A partir de data, extrae features y vectores XAI.
-    # Despues los concatena y calcula la distancia de mahalanobis respecto
-    # a la distribucion de features + XAI de ID. Devuelve predicciones y score
-
+    # Despues para cada ejemplo extrae un porcentaje 
+    # (puesto a 25% por defecto) de los valores mas altos en valor absoluto del vector
+    # CRP. Obtenemos los indices de estos p% valores mas altos y en las features
+    # asignamos 0 a cada posicion que no sea uno de los indices anteriores. 
+    # Por ultimo, se calcula la distancia de mahalanobis respecto
+    # a la distribucion de features de ID. Devuelve predicciones y score.
     def postprocess(self, net: nn.Module, data: Any):
 
 
@@ -141,10 +130,13 @@ class BestXAIPostProcessor(BasePostprocessor):
             pred = logits.argmax(dim=1)
 
         data = data.detach().requires_grad_(True)
-        # condiciones: propagar relevancia respecto a la clase predicha
+
+        # Se propaga la relevancia respecto a la clase predicha
         conditions = [{"y": [p.item()]} for p in pred]
 
-        # Calculamos el vector de XAI
+        # Calculamos el vector de XAI. Se realiza
+        # sobre la layer4 que suele ser la ultima en CNN,
+        # en nuestro caso es resnet50.
         attr = self.attribution(
             data,
             conditions=conditions,
@@ -152,12 +144,18 @@ class BestXAIPostProcessor(BasePostprocessor):
             record_layer=["layer4"]
         )
         
-
+        # Se toma la relevancia
         relevance = self.concept.attribute(attr.relevances["layer4"], abs_norm=True) 
         relevance.detach()
-        best_xai = int(1 * features.shape[1])
+
+        # Se toma el porcentaje de mejores valores para cada muestra de CRP
+        best_xai = int(self.best_pct  * features.shape[1])
         top_idx = torch.topk(relevance.abs(), k=best_xai, dim=1).indices
-        # Concatenamos features y XAI
+
+
+        # Para cada ejemplo, construimos una mascara de modo que
+        # features_masked[i] = features[i] si i esta en top_idx
+        # y 0 en caso contrario
         mask = torch.zeros_like(features, dtype=torch.bool)
 
         mask.scatter_(1, top_idx, True)
