@@ -28,7 +28,7 @@ DeiT supuso la obtención de un separador destacable, ahorrando el 75% de featur
 cabe destacar que el uso de la totalidad de features del modelo DeiT para la detección OOD, resulta
 en una separación perfecta de ambos conjuntos de datos.
 
-[Memoria completa](TFG_Jose_Maria_Martin.pdf)
+Es altamente recomendable consultar la [Memoria completa](TFG_Jose_Maria_Martin.pdf). En este documento readme se describen de forma muy resumida los conceptos y métodos empleados en este trabajo, pero en la memoria completa se puede encontrar de forma detallada todos estos conceptos, además de los fundamentos teóricos necesarios para entenderlos.
 
 ## Configs
 
@@ -52,3 +52,6 @@ El directorio [results](results) contiene los resultados de nuestros experimento
 -  [rmdxai](results/rmdxai): Contiene los resultados de [RMDXAIPostProcessor](scripts/RMDXAIPostProcessor.py).
 -  [xai](results/xai): Contiene los resultados de [XAIPostProcessor](scripts/XAIPostProcessor.py), [XAIPostProcessor versión normalizada](scripts/XAIPostProcessor_norm.py) y [BestXAIPostProcessor](scripts/BestXAIPostProcessor.py).
 -  [DeiT](results/DeiT): Contiene los resultados de entrenamiento de **DeiT** ([comparacion de funcion de perdida en train vs val](results/DeiT/loss_comp.png) y [accuracy en validacion](results/DeiT/accuracy.png)) y la evaluación OOD para el postprocessor [BestXAIPostProcessor (versión transformers)](scripts/BestXAIPostProcessor_trans.py).
+
+## Data
+El directorio [data](data) contiene los conjuntos de datos OOD tomados de OpenOOD y nuestro dataset ID en formato imglist (formato que acepta OpenOOD). El conjunto ID se divide en [train.txt](data/train.txt) y [val.txt](data/val.txt).
