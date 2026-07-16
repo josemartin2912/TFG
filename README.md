@@ -30,10 +30,13 @@ en una separación perfecta de ambos conjuntos de datos.
 
 [Memoria completa](TFG_Jose_Maria_Martin.pdf)
 
-##configs
+## Configs
 
-La carpeta [configs](configs) contiene los archivos en formato yml de configuración para los scripts basados en OOD. Estos ficheros contendrán rutas a nuestro dataset, modelo a usar y checkpoints, preprocessors, postprocessors..., etc.
+El directorio [configs](configs) contiene los archivos en formato yml de configuración para los scripts basados en OOD. Estos ficheros contendrán rutas a nuestro dataset, modelo a usar y checkpoints, preprocessors, postprocessors..., etc.
 
-##results
-
-
+## Results
+El directorio [results](results) contiene los resultados de nuestros experimentos. Por lo general, el modelo usado es **ResNet-50** salvo en [results/DeiT](results/DeiT) que se usa el modelo **DeiT**. En cuanto a los demás subdirectorios:
+-  **maha**: Contiene los resultados de [MahaPostProcessor](scripts/MahaPostProcessor.py).
+-  **rmd**: Contiene los resultados de [RMDPostProcessor](scripts/RMDPostProcessor.py).
+-  **rmdxai**: Contiene los resultados de [RMDXAIPostProcessor](scripts/RMDXAIPostProcessor.py).
+-  **xai**: Contiene los resultados de [XAIPostProcessor](scripts/XAIPostProcessor.py), [XAIPostProcessor versión normalizada](scripts/XAIPostProcessor_norm.py) y [BestXAIPostProcessor](scripts/BestXAIPostProcessor.py).
