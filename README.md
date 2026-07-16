@@ -27,3 +27,5 @@ A continuación, se propone utilizar una cantidad menor de las features totales,
 DeiT supuso la obtención de un separador destacable, ahorrando el 75% de features. Por último,
 cabe destacar que el uso de la totalidad de features del modelo DeiT para la detección OOD, resulta
 en una separación perfecta de ambos conjuntos de datos.
+
+[Memoria completa](TFG_Jose_Maria_Martin.pdf)
