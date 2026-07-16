@@ -29,3 +29,11 @@ cabe destacar que el uso de la totalidad de features del modelo DeiT para la det
 en una separación perfecta de ambos conjuntos de datos.
 
 [Memoria completa](TFG_Jose_Maria_Martin.pdf)
+
+##configs
+
+La carpeta [configs](configs) contiene los archivos en formato yml de configuración para los scripts basados en OOD. Estos ficheros contendrán rutas a nuestro dataset, modelo a usar y checkpoints, preprocessors, postprocessors..., etc.
+
+##results
+
+
