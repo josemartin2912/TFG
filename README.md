@@ -35,8 +35,10 @@ en una separación perfecta de ambos conjuntos de datos.
 El directorio [configs](configs) contiene los archivos en formato yml de configuración para los scripts basados en OOD. Estos ficheros contendrán rutas a nuestro dataset, modelo a usar y checkpoints, preprocessors, postprocessors..., etc.
 
 ## Results
-El directorio [results](results) contiene los resultados de nuestros experimentos. Por lo general, el modelo usado es **ResNet-50** salvo en [results/DeiT](results/DeiT) que se usa el modelo **DeiT**. En cuanto a los demás subdirectorios:
--  **maha**: Contiene los resultados de [MahaPostProcessor](scripts/MahaPostProcessor.py).
--  **rmd**: Contiene los resultados de [RMDPostProcessor](scripts/RMDPostProcessor.py).
--  **rmdxai**: Contiene los resultados de [RMDXAIPostProcessor](scripts/RMDXAIPostProcessor.py).
--  **xai**: Contiene los resultados de [XAIPostProcessor](scripts/XAIPostProcessor.py), [XAIPostProcessor versión normalizada](scripts/XAIPostProcessor_norm.py) y [BestXAIPostProcessor](scripts/BestXAIPostProcessor.py).
+El directorio [results](results) contiene los resultados de nuestros experimentos. Por lo general, el modelo usado es **ResNet-50** salvo en [results/DeiT](results/DeiT) que se usa el modelo **DeiT**. En cuanto a los contenidos:
+-  [results](results): Contiene los resultados de entrenamiento de **ResNet-50** ([comparacion de funcion de perdida en train vs val](results/loss_comp.png) y [accuracy en validacion](results/accuracy.png)) y la evaluación OOD para métodos del estado del arte **MSP y  ViM** y la primera propuesta [XAIPostProcessor](scripts/XAIPostProcessor.py).
+-  [maha](results/maha): Contiene los resultados de [MahaPostProcessor](scripts/MahaPostProcessor.py).
+-  [rmd](results/rmd): Contiene los resultados de [RMDPostProcessor](scripts/RMDPostProcessor.py).
+-  [rmdxai](results/rmdxai): Contiene los resultados de [RMDXAIPostProcessor](scripts/RMDXAIPostProcessor.py).
+-  [xai](results/xai): Contiene los resultados de [XAIPostProcessor](scripts/XAIPostProcessor.py), [XAIPostProcessor versión normalizada](scripts/XAIPostProcessor_norm.py) y [BestXAIPostProcessor](scripts/BestXAIPostProcessor.py).
+-  [DeiT](results/DeiT): Contiene los resultados de entrenamiento de **DeiT** ([comparacion de funcion de perdida en train vs val](results/DeiT/loss_comp.png) y [accuracy en validacion](results/DeiT/accuracy.png)) y la evaluación OOD para el postprocessor [BestXAIPostProcessor](scripts/BestXAIPostProcessor_trans.py).
