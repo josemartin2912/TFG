@@ -15,7 +15,7 @@ from openood.postprocessors.base_postprocessor import BasePostprocessor
 # features. Este es el postprocessor para transformers.
 #----------------------------------------------------------------------
 
-class BestXAIPostProcessor_trans(BasePostprocessor): 
+class RXAIPostProcessor_trans(BasePostprocessor): 
 
     # Constructor. Asignamos el porcentaje de mejores caracteristicas a seleccionar.
     # Por defecto es 25%.
