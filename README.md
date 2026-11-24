@@ -28,7 +28,7 @@ DeiT supuso la obtención de un separador destacable, ahorrando el 75% de featur
 cabe destacar que el uso de la totalidad de features del modelo DeiT para la detección OOD, resulta
 en una separación perfecta de ambos conjuntos de datos.
 
-Es altamente recomendable consultar la [Memoria completa](TFG_Jose_Maria_Martin.pdf). En este documento readme se describen de forma muy resumida los conceptos y métodos empleados en este trabajo, pero en la memoria completa se puede encontrar de forma detallada todos estos conceptos, además de los fundamentos teóricos necesarios para entenderlos.
+Es altamente recomendable consultar la [Memoria completa](TFGJoseMariaMartin.pdf). En este documento readme se describen de forma muy resumida los conceptos y métodos empleados en este trabajo, pero en la memoria completa se puede encontrar de forma detallada todos estos conceptos, además de los fundamentos teóricos necesarios para entenderlos.
 
 ## Configs
 
