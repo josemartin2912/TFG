@@ -10,8 +10,8 @@ from XAIPostprocessor import XAIPostProcessor
 from MahaPostProcessor import MahaPostProcessor
 from RMDXAIPostprocessor import RMDXAIPostProcessor
 from RMDPostprocessor import RMDPostProcessor
-from BestXAIPostProcessor_trans import BestXAIPostProcessor_trans
-from BestXAIPostProcessor import BestXAIPostProcessor
+from RXAIPostProcessor_trans import RXAIPostProcessor_trans
+from RXAIPostProcessor import RXAIPostProcessor
 import timm
 
 # Este archivo se encarga de realizar la evaluacion OOD. 
@@ -100,7 +100,7 @@ evaluator = get_evaluator(cfg)
 #                     Scores -> distancia relative mahalanobis a distribucion [feat,crp]
 # - XAIPostProcessor_norm: calcular distribucion de features y CRP concatenados (normalizados).
 #                     Scores -> distancia de mahalanobis a distribucion [feat,crp]
-# - BestXAIPostProcessor: calcular distribucion de features.
+# - RXAIPostProcessor: calcular distribucion de features.
 #                     Scores -> Para cada muestra calcular features y CRP. Tomar 
 #                               el p% indices de los mayores valores en valor absoluto
 #                               para cada ejemplo. Calcular la distancia de mahalanobis
@@ -108,18 +108,18 @@ evaluator = get_evaluator(cfg)
 #                               de los indices anteriores
 #
 # Transformers:
-# - BestXAIPostProcessor_trans: calcular distribucion de features.
+# - RXAIPostProcessor_trans: calcular distribucion de features.
 #                     Scores -> Para cada muestra calcular features y CRP. Tomar 
 #                               el p% indices de los mayores valores en valor absoluto
 #                               para cada ejemplo. Calcular la distancia de mahalanobis
 #                               tomando únicamente las features en las posiciones 
 #                               de los indices anteriores
 
-# Usamos el postprocessor BestXAIPostProcessor
-postprocessor = BestXAIPostProcessor_trans(cfg)
+# Usamos el postprocessor RXAIPostProcessor
+postprocessor = RXAIPostProcessor_trans(cfg)
 
 # Mismo postprocessor para resnet50
-# postprocessor = BestXAIPostProcessor(cfg) 
+# postprocessor = RXAIPostProcessor(cfg) 
 postprocessor.setup(net, id_data_loaders, ood_data_loaders)
 
 # -------------------------
