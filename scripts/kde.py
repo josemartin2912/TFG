@@ -10,8 +10,8 @@ from XAIPostprocessor import XAIPostProcessor
 from MahaPostProcessor import MahaPostProcessor
 from RMDXAIPostprocessor import RMDXAIPostProcessor
 from RMDPostprocessor import RMDPostProcessor
-from BestXAIPostProcessor_trans import BestXAIPostProcessor_trans
-from BestXAIPostProcessor import BestXAIPostProcessor
+from RXAIPostProcessor_trans import RXAIPostProcessor_trans
+from RXAIPostProcessor import RXAIPostProcessor
 import timm
 from scipy.stats import gaussian_kde
 import numpy as np
@@ -89,8 +89,8 @@ evaluator = get_evaluator(cfg)
 # Postprocessors
 # -------------------------
 #postprocessor = XAIPostProcessor(cfg)
-#postprocessor = BestXAIPostProcessor_trans(cfg)
-#postprocessor = BestXAIPostProcessor(cfg)
+#postprocessor = RXAIPostProcessor_trans(cfg)
+#postprocessor = RXAIPostProcessor(cfg)
 postprocessor = MahaPostProcessor(cfg)
 postprocessor.setup(net, id_data_loaders, ood_data_loaders)
 
