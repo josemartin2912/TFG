@@ -16,7 +16,7 @@ from openood.postprocessors.base_postprocessor import BasePostprocessor
 #----------------------------------------------------------------------
 
 
-class BestXAIPostProcessor(BasePostprocessor): 
+class RXAIPostProcessor(BasePostprocessor): 
 
     # Constructor. Asignamos el porcentaje de mejores caracteristicas a seleccionar.
     # Por defecto es 25%.
